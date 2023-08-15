@@ -7,11 +7,11 @@ test:
 	echo ${SRCS}
 	echo ${NAMES}
 
-compile:
-	./fltk/fltk-config --compile main.cpp
+compile: ${SRCS}
+	./fltk/fltk-config --compile $<
 
-run: main
-	./main.out
+run: ${NAMES}
+	./$<
 
 clean:
 	rm -f ${NAMES}

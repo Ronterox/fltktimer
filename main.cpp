@@ -1,12 +1,13 @@
-#include <FL/Fl.H>
+#include <FL/Fl.H> 
 #include <FL/Fl_Window.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Progress.H>
+
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-#define LOG(x) std::cout << __FILE__ << ":" << __LINE__ << ":" << x << std::endl
+#define LOG(x) std::cout << __FILE__ << ':' << __LINE__ << ": " << x << std::endl
 
 // Button callback
 void button_callback(Fl_Widget *button, void *data)
@@ -27,7 +28,7 @@ void button_callback(Fl_Widget *button, void *data)
   w->end();
 
   // Computation loop
-  for (int t = 1; t <= 500; t++)
+  for (int t = 1; t <= 500; ++t)
   {
     progress->value(t / 500.0);
     char percent[10];
