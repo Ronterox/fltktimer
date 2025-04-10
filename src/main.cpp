@@ -13,10 +13,15 @@
 #define LOG(x) std::cout << __FILE__ << ":" << __LINE__ << " " << x << std::endl
 template <typename T> using list = std::vector<T>;
 
+typedef struct Task {
+	Fl_Box *box;
+	Fl_Button *del;
+} Task;
+
 int main(const int argc, char **argv) {
 	LOG("Setting up widgets...");
 
-	list<Fl_Box *> boxes;
+	list<Task> tasks;
 
 	Fl_Window *window = new Fl_Window(640, 360);
 	Fl_Input *input = new Fl_Input(10, 10, 600, 30);
@@ -24,12 +29,11 @@ int main(const int argc, char **argv) {
 	LOG("Setting up events...");
 	input->when(FL_WHEN_ENTER_KEY);
 
-	auto data = std::make_pair(&boxes, window);
+	auto data = std::make_pair(&tasks, window);
 
 	input->callback(
 		[](Fl_Widget *w, void *data) {
-			auto [boxes, window] =
-				*static_cast<std::pair<list<Fl_Box *> *, Fl_Window *> *>(data);
+			auto [tasks, window] = *static_cast<std::pair<list<Task> *, Fl_Window *> *>(data);
 			Fl_Input *input = static_cast<Fl_Input *>(w);
 
 			std::string s = input->value();
@@ -40,25 +44,40 @@ int main(const int argc, char **argv) {
 
 			window->begin();
 
-			const int y = 50 + boxes->size() * 40;
+			const int y = tasks->size() > 0 ? tasks->back().box->y() + 40 : 50;
 
 			Fl_Box *newbox = new Fl_Box(10, y, 600, 30, strdup(s.c_str()));
 			Fl_Button *del = new Fl_Button(600, y, 30, 30, "X");
 
 			del->callback(
 				[]([[maybe_unused]] Fl_Widget *w, void *data) {
-					Fl_Box *box = static_cast<Fl_Box *>(data);
-					std::string s = box->label();
+					list<Task> *tasks = static_cast<list<Task> *>(data);
 
-					box->label(strdup(std::string(s.size(), '-').c_str()));
+					bool found = false;
+					for (auto it = tasks->begin(); it != tasks->end(); it++) {
+						Fl_Box *b = it->box;
+						Fl_Button *del = it->del;
+
+						if (found && it != tasks->begin()) {
+							b->position(b->x(), b->y() - 20);
+							del->position(del->x(), del->y() - 20);
+							continue;
+						}
+
+						if (it->del == w) {
+							std::string s = b->label();
+							b->label(strdup(std::string(s.size(), '-').c_str()));
+							found = true;
+						}
+					}
 
 					w->hide();
 				},
-				newbox);
+				tasks);
 
 			window->end();
 
-			boxes->push_back(newbox);
+			tasks->push_back({newbox, del});
 
 			window->redraw();
 

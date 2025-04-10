@@ -25,5 +25,4 @@ $(TARGET): $(OBJS)
 	$(LINK) -o $(TARGET) $(OBJS) $(LDFLAGS)
 
 clean: $(TARGET) $(OBJS)
-	rm -f $(OBJS) 2> /dev/null
-	rm -f $(TARGET) 2> /dev/null
+	rm -f $(OBJS) $(TARGET) 2> /dev/null
