@@ -1,13 +1,10 @@
-#include <FL/Enumerations.H>
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Window.H>
-#include <cstdio>
-#include <cstring>
+#include <algorithm>
 #include <iostream>
-#include <utility>
 #include <vector>
 
 #define LOG(x) std::cout << __FILE__ << ":" << __LINE__ << " " << x << std::endl
@@ -68,6 +65,10 @@ int main(const int argc, char **argv) {
 							std::string s = b->label();
 							b->label(strdup(std::string(s.size(), '-').c_str()));
 							found = true;
+
+							const int completed = std::count_if(tasks->begin(), tasks->end(),
+																[](const Task &t) { return t.box->label()[0] == '-'; });
+							LOG("Tasks completed: " + std::to_string(completed));
 						}
 					}
 
@@ -78,6 +79,8 @@ int main(const int argc, char **argv) {
 			window->end();
 
 			tasks->push_back({newbox, del});
+
+			LOG("Added new task: " + s + " (" + std::to_string(tasks->size()) + ")");
 
 			window->redraw();
 
