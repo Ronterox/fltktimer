@@ -41,7 +41,11 @@ int main(const int argc, char **argv) {
 
 			window->begin();
 
-			const int y = tasks->size() > 0 ? tasks->back().box->y() + 40 : 50;
+			int y = 50;
+			if (tasks->size() > 0) {
+				Fl_Box *b = tasks->back().box;
+				y = b->label()[0] == '-' ? b->y() + 10 : b->y() + 40;
+			}
 
 			Fl_Box *newbox = new Fl_Box(10, y, 600, 30, strdup(s.c_str()));
 			Fl_Button *del = new Fl_Button(600, y, 30, 30, "X");
@@ -56,8 +60,8 @@ int main(const int argc, char **argv) {
 						Fl_Button *del = it->del;
 
 						if (found && it != tasks->begin()) {
-							b->position(b->x(), b->y() - 20);
-							del->position(del->x(), del->y() - 20);
+							b->position(b->x(), b->y() - 30);
+							del->position(del->x(), del->y() - 30);
 							continue;
 						}
 

@@ -8,7 +8,7 @@ LDFLAGS  = $(shell fltk-config --use-gl --use-images --ldflags)
 LDSTATIC = $(shell fltk-config --use-gl --use-images --ldstaticflags)
 LINK     = $(CXX)
 
-TARGET = timer.out
+TARGET = tasks.out
 OBJS = main.o
 SRCS = src/main.cpp
 
