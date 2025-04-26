@@ -6,9 +6,20 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <vector>
+
+#define foreach_line(filename, line, body)                                                                                  \
+	std::ifstream file(filename);                                                                                           \
+	std::string line;                                                                                                       \
+	if (file.is_open()) {                                                                                                   \
+		while (std::getline(file, line)) {                                                                                  \
+			body                                                                                                            \
+		};                                                                                                                  \
+		file.close();                                                                                                       \
+	}
 
 #define LOG(x) std::cout << __FILE__ << ":" << __LINE__ << " " << x << std::endl
 template <typename T> using list = std::vector<T>;
@@ -20,6 +31,12 @@ typedef struct Task {
 	Fl_Button *del;
 	time_point start;
 } Task;
+
+struct FileData {
+	std::string filename;
+	std::time_t *last_modified;
+	std::function<void()> onfilechange;
+};
 
 bool is_task_completed(Fl_Box *b) {
 	const char *start = b->label();
@@ -38,6 +55,20 @@ void save_tasks(const list<Task> *tasks) {
 std::_Put_time<char> get_timestamp(const time_point &time) {
 	time_t current = std::chrono::system_clock::to_time_t(time);
 	return std::put_time(std::localtime(&current), "%H:%M:%S");
+}
+
+bool has_file_changed(const std::string &filename, std::time_t &last_modified) {
+	struct stat file_info;
+	if (stat(filename.c_str(), &file_info) != 0) {
+		// Handle error (e.g., file not found)
+		return false;
+	}
+
+	if (file_info.st_mtime > last_modified) {
+		last_modified = file_info.st_mtime;
+		return true;
+	}
+	return false;
 }
 
 void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
@@ -116,26 +147,31 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
 	window->redraw();
 }
 
+void file_check_callback(void *data) {
+	auto filedata = static_cast<FileData *>(data);
+
+	if (has_file_changed(filedata->filename, *filedata->last_modified)) {
+		filedata->onfilechange();
+	}
+
+	Fl::repeat_timeout(1.0, file_check_callback, data);
+}
+
 int main(const int argc, char **argv) {
 	LOG("Setting up widgets...");
 	Fl_Window *window = new Fl_Window(640, 360);
 	Fl_Input *input = new Fl_Input(10, 10, 600, 30);
 
 	LOG("Loading tasks...");
+	std::string filename = "tasks";
+	std::time_t last_modified = 0;
+
 	list<Task> tasks;
 
-	std::ifstream file("tasks");
-	std::string line;
-
-	if (file.is_open()) {
-
-		while (std::getline(file, line)) {
-			if (line.empty()) continue;
-			add_task(&tasks, window, line);
-		}
-
-		file.close();
-	}
+	foreach_line(filename, line, {
+		if (line.empty()) continue;
+		add_task(&tasks, window, line);
+	});
 
 	for (const auto &task : tasks) {
 		if (is_task_completed(task.box)) task.del->hide();
@@ -162,6 +198,30 @@ int main(const int argc, char **argv) {
 	window->begin();
 	input->show();
 	window->end();
+
+	LOG("Running file check callback...");
+
+	struct stat file_info;
+	if (stat(filename.c_str(), &file_info) == 0) {
+		last_modified = file_info.st_mtime;
+	}
+
+	FileData file_data{
+		filename,
+		&last_modified,
+		[filename, &tasks, window]() {
+			LOG("File changed, reloading tasks...");
+			foreach_line(filename, line, {
+				if (line.empty()) continue;
+				if (std::find_if(tasks.begin(), tasks.end(), [line](const Task &t) { return t.box->label() == line; }) ==
+					tasks.end()) {
+					add_task(&tasks, window, line);
+				}
+			});
+		},
+	};
+
+	Fl::add_timeout(1.0, file_check_callback, &file_data);
 
 	LOG("Loading window...");
 	window->show(argc, argv);
