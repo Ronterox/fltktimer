@@ -4,16 +4,21 @@
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Window.H>
 #include <algorithm>
+#include <chrono>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <vector>
 
 #define LOG(x) std::cout << __FILE__ << ":" << __LINE__ << " " << x << std::endl
 template <typename T> using list = std::vector<T>;
 
+typedef std::chrono::time_point<std::chrono::system_clock> time_point;
+
 typedef struct Task {
 	Fl_Box *box;
 	Fl_Button *del;
+	time_point start;
 } Task;
 
 bool is_task_completed(Fl_Box *b) {
@@ -26,9 +31,13 @@ void save_tasks(const list<Task> *tasks) {
 	std::ofstream file("tasks");
 	for (const auto &task : *tasks) {
 		file << task.box->label() << '\n' << std::endl;
-		LOG(task.box->label());
 	}
 	file.close();
+}
+
+std::_Put_time<char> get_timestamp(const time_point &time) {
+	time_t current = std::chrono::system_clock::to_time_t(time);
+	return std::put_time(std::localtime(&current), "%H:%M:%S");
 }
 
 void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
@@ -45,6 +54,7 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
 		y = is_task_completed(b) ? b->y() + 10 : b->y() + 40;
 	}
 
+	const auto now = std::chrono::system_clock::now();
 	Fl_Box *newbox = new Fl_Box(10, y, 600, 30, strdup(task.c_str()));
 	Fl_Button *del = new Fl_Button(600, y, 30, 30, "X");
 
@@ -70,7 +80,24 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
 
 					const int completed =
 						std::count_if(tasks->begin(), tasks->end(), [](const Task &t) { return is_task_completed(t.box); });
-					LOG("Tasks completed: " + std::to_string(completed));
+
+					const time_point now = std::chrono::system_clock::now();
+					const int seconds = std::chrono::duration_cast<std::chrono::seconds>(now - it->start).count();
+
+					std::string time_taken;
+					if (seconds > 60) {
+						time_taken = std::to_string(seconds / 60) + " minutes";
+						if (seconds % 60 > 0) {
+							time_taken += " and " + std::to_string(seconds % 60) + " seconds";
+						} else {
+							time_taken += " seconds";
+						}
+					} else {
+						time_taken = std::to_string(seconds) + " seconds";
+					}
+
+					LOG("Completed: \"" << s << "\" at " << get_timestamp(it->start) << ", took a total of " << time_taken);
+					LOG("Tasks completed: " << std::to_string(completed));
 				}
 			}
 
@@ -82,9 +109,9 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
 
 	window->end();
 
-	tasks->push_back({newbox, del});
+	tasks->push_back({newbox, del, now});
 
-	LOG("Added new task: " + task + " (" + std::to_string(tasks->size()) + ")");
+	LOG("Added new task: \"" << task << "\" (" << std::to_string(tasks->size()) << ") at " << get_timestamp(now));
 
 	window->redraw();
 }
@@ -101,6 +128,7 @@ int main(const int argc, char **argv) {
 	std::string line;
 
 	if (file.is_open()) {
+
 		while (std::getline(file, line)) {
 			if (line.empty()) continue;
 			add_task(&tasks, window, line);
