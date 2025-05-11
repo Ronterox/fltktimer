@@ -5,6 +5,7 @@
 #include <FL/Fl_Window.H>
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -16,10 +17,13 @@
 	std::string line;                                                                                                       \
 	if (file.is_open()) {                                                                                                   \
 		while (std::getline(file, line)) {                                                                                  \
+			if (line.empty()) continue;                                                                                     \
 			body                                                                                                            \
 		};                                                                                                                  \
 		file.close();                                                                                                       \
 	}
+
+const float UPDATE_INTERVAL = 1.0;
 
 #define LOG(x) std::cout << __FILE__ << ":" << __LINE__ << " " << x << std::endl
 template <typename T> using list = std::vector<T>;
@@ -154,7 +158,7 @@ void file_check_callback(void *data) {
 		filedata->onfilechange();
 	}
 
-	Fl::repeat_timeout(1.0, file_check_callback, data);
+	Fl::repeat_timeout(UPDATE_INTERVAL, file_check_callback, data);
 }
 
 int main(const int argc, char **argv) {
@@ -168,10 +172,7 @@ int main(const int argc, char **argv) {
 
 	list<Task> tasks;
 
-	foreach_line(filename, line, {
-		if (line.empty()) continue;
-		add_task(&tasks, window, line);
-	});
+	foreach_line(filename, line, { add_task(&tasks, window, line); });
 
 	for (const auto &task : tasks) {
 		if (is_task_completed(task.box)) task.del->hide();
@@ -212,7 +213,6 @@ int main(const int argc, char **argv) {
 		[filename, &tasks, window]() {
 			LOG("File changed, reloading tasks...");
 			foreach_line(filename, line, {
-				if (line.empty()) continue;
 				if (std::find_if(tasks.begin(), tasks.end(), [line](const Task &t) { return t.box->label() == line; }) ==
 					tasks.end()) {
 					add_task(&tasks, window, line);
@@ -221,7 +221,7 @@ int main(const int argc, char **argv) {
 		},
 	};
 
-	Fl::add_timeout(1.0, file_check_callback, &file_data);
+	Fl::add_timeout(UPDATE_INTERVAL, file_check_callback, &file_data);
 
 	LOG("Loading window...");
 	window->show(argc, argv);
