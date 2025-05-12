@@ -24,5 +24,8 @@ $(OBJS): $(SRCS)
 $(TARGET): $(OBJS)
 	$(LINK) -o $(TARGET) $(OBJS) $(LDFLAGS)
 
+gdb: $(TARGET)
+	gdb ./$(TARGET)
+
 clean: $(TARGET) $(OBJS)
 	rm -f $(OBJS) $(TARGET) 2> /dev/null

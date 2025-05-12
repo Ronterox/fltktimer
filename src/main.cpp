@@ -10,6 +10,7 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <tuple>
 #include <vector>
 
 #define foreach_line(filename, line, body)                                                                                  \
@@ -44,12 +45,12 @@ struct FileData {
 
 bool is_task_completed(Fl_Box *b) {
 	const char *start = b->label();
-	const char *end = start + b->labelsize();
+	const char *end = start + strlen(start);
 	return std::find_if_not(start, end, [](char c) { return c == '-'; }) == end;
 }
 
-void save_tasks(const list<Task> *tasks) {
-	std::ofstream file("tasks");
+void save_tasks(const list<Task> *tasks, const char *filename) {
+	std::ofstream file(filename);
 	for (const auto &task : *tasks) {
 		file << task.box->label() << '\n' << std::endl;
 	}
@@ -75,7 +76,7 @@ bool has_file_changed(const std::string &filename, std::time_t &last_modified) {
 	return false;
 }
 
-void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
+void add_task(list<Task> *tasks, Fl_Window *window, std::string task, const std::string &filename) {
 	task.erase(0, task.find_first_not_of(' '));
 	task.erase(task.find_last_not_of(' ') + 1);
 
@@ -93,9 +94,11 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
 	Fl_Box *newbox = new Fl_Box(10, y, 600, 30, strdup(task.c_str()));
 	Fl_Button *del = new Fl_Button(600, y, 30, 30, "X");
 
+	auto data = new std::pair<list<Task> *, const std::string &>(tasks, filename);
+
 	del->callback(
-		[]([[maybe_unused]] Fl_Widget *w, void *data) {
-			const list<Task> *tasks = static_cast<list<Task> *>(data);
+		[](Fl_Widget *w, void *data) {
+			const auto [tasks, filename] = *static_cast<std::pair<list<Task> *, const std::string &> *>(data);
 
 			bool found = false;
 			for (auto it = tasks->begin(); it != tasks->end(); it++) {
@@ -110,7 +113,7 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
 
 				if (it->del == w) {
 					std::string s = b->label();
-					b->label(strdup(std::string(s.size(), '-').c_str()));
+					b->copy_label(std::string(s.size(), '-').c_str());
 					found = true;
 
 					const int completed =
@@ -136,11 +139,13 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task) {
 				}
 			}
 
-			save_tasks(tasks);
+			save_tasks(tasks, filename.c_str());
 
 			w->hide();
+
+			delete static_cast<std::pair<list<Task> *, const std::string &> *>(data);
 		},
-		tasks);
+		data);
 
 	window->end();
 
@@ -167,12 +172,12 @@ int main(const int argc, char **argv) {
 	Fl_Input *input = new Fl_Input(10, 10, 600, 30);
 
 	LOG("Loading tasks...");
-	std::string filename = "tasks";
+	std::string filename = argc > 1 ? argv[1] : "tasks";
 	std::time_t last_modified = 0;
 
 	list<Task> tasks;
 
-	foreach_line(filename, line, { add_task(&tasks, window, line); });
+	foreach_line(filename, line, { add_task(&tasks, window, line, filename); });
 
 	for (const auto &task : tasks) {
 		if (is_task_completed(task.box)) task.del->hide();
@@ -181,15 +186,16 @@ int main(const int argc, char **argv) {
 	LOG("Setting up events...");
 	input->when(FL_WHEN_ENTER_KEY);
 
-	auto data = std::make_pair(&tasks, window);
+	auto data = std::make_tuple(&tasks, window, &filename);
 
 	input->callback(
 		[](Fl_Widget *w, void *data) {
-			auto [tasks, window] = *static_cast<std::pair<list<Task> *, Fl_Window *> *>(data);
+			auto [tasks, window, filename] =
+				*static_cast<std::tuple<list<Task> *, Fl_Window *, const std::string &> *>(data);
 			Fl_Input *input = static_cast<Fl_Input *>(w);
 
-			add_task(tasks, window, input->value());
-			save_tasks(tasks);
+			add_task(tasks, window, input->value(), filename);
+			save_tasks(tasks, filename.c_str());
 
 			input->value("");
 		},
@@ -215,7 +221,7 @@ int main(const int argc, char **argv) {
 			foreach_line(filename, line, {
 				if (std::find_if(tasks.begin(), tasks.end(), [line](const Task &t) { return t.box->label() == line; }) ==
 					tasks.end()) {
-					add_task(&tasks, window, line);
+					add_task(&tasks, window, line, filename);
 				}
 			});
 		},
