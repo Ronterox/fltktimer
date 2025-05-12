@@ -172,7 +172,7 @@ int main(const int argc, char **argv) {
 	Fl_Input *input = new Fl_Input(10, 10, 600, 30);
 
 	LOG("Loading tasks...");
-	std::string filename = argc > 1 ? argv[1] : "tasks";
+	std::string filename = argc > 1 ? argv[argc - 1] : "tasks";
 	std::time_t last_modified = 0;
 
 	list<Task> tasks;
