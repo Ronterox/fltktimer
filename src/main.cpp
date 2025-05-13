@@ -1,9 +1,10 @@
 #include "app.cpp"
-#include <cstdio>
-#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #define MAIN_FILENAME "tasks"
 #define TASKLIST_KWORD "tasklist"
+
 #define starts_with(str, prefix) (str.rfind(prefix, 0) == 0)
 
 int main(int argc, char *argv[]) {
@@ -16,10 +17,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		const std::string DIR_PATH = std::string(TASKLIST_KWORD);
-		const std::string BASIC_FILE = DIR_PATH + "/tasks";
 
 		list<std::string> files = {};
-		std::ofstream file(BASIC_FILE);
+		std::ofstream file;
 
 		foreach_line(filename, line, {
 			if (starts_with(line, TASKLIST_KWORD)) {
@@ -31,48 +31,54 @@ int main(int argc, char *argv[]) {
 
 				file = std::ofstream(tasklist_path);
 				files.push_back(tasklist_path);
-			} else {
+			} else if (file.is_open()) {
 				file << line << '\n' << std::endl;
 			}
 		});
 
 		file.close();
 
-		std::ostringstream command;
 		for (const auto &filename : files) {
-			for (int i = 0; i < argc; i++) command << '"' << argv[i] << "\" ";
-			command << '"' << filename << "\" & ";
-		}
+			pid_t pid = fork();
 
-		LOG("Running all tasklists: " << command.str());
-		// if (system(command.str().c_str()) != 0) {
-		// 	std::cerr << "Failed to start processes" << std::endl;
-		// }
+			if (pid == 0) { // Child process
+				// Build arguments: [program, original_args..., file, nullptr]
+				list<char *> args;
+				for (int i = 0; i < argc - 1; i++) args.push_back(argv[i]);
 
-		int ret = run_app(BASIC_FILE, argc, argv);
+				args.push_back(const_cast<char *>(filename.c_str())); // Add file
+				// args.push_back(nullptr);							  // NULL-terminate
 
-		// TODO: Do this when sub files are modified callback
-		if (ret == 0) {
-			std::ostringstream tasks;
-			files.insert(files.begin(), BASIC_FILE);
+				execv(argv[0], args.data());
 
-			for (const auto &filename : files) {
-				tasks << "\n" TASKLIST_KWORD " " << filename.substr(DIR_PATH.size() + 1) << '\n' << std::endl;
-				foreach_line(filename, line, {
-					// if (is_task_completed(line.c_str())) continue;
-					tasks << line << '\n' << std::endl;
-				});
+				// Only reached if execv fails
+				std::cerr << "execv failed for " << filename << std::endl;
+				_exit(1);
+			} else if (pid < 0) {
+				std::cerr << "fork failed for " << filename << std::endl;
 			}
-
-			std::ofstream file(filename);
-			file << tasks.str();
-			file.close();
-
-		} else {
-			std::cerr << "Failed to run/close" << std::endl;
+			// Parent continues
 		}
 
-		return ret;
+		while (wait(nullptr) != -1);
+
+		LOG("Saving to main file: " << filename);
+
+		// TODO: Do this when sub files are modified callback or on wait
+		std::ostringstream tasks;
+		for (const auto &filename : files) {
+			tasks << "\n" TASKLIST_KWORD " " << filename.substr(DIR_PATH.size() + 1) << '\n' << std::endl;
+			foreach_line(filename, line, {
+				// if (is_task_completed(line.c_str())) continue;
+				tasks << line << '\n' << std::endl;
+			});
+		}
+
+		file = std::ofstream(filename);
+		file << tasks.str();
+		file.close();
+
+		return 0;
 	}
 
 	return run_app(filename, argc, argv);
