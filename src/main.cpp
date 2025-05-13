@@ -15,7 +15,8 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 
-		const std::string BASIC_FILE = std::string(TASKLIST_KWORD) + "/tasks";
+		const std::string DIR_PATH = std::string(TASKLIST_KWORD);
+		const std::string BASIC_FILE = DIR_PATH + "/tasks";
 
 		list<std::string> files = {};
 		std::ofstream file(BASIC_FILE);
@@ -25,10 +26,11 @@ int main(int argc, char *argv[]) {
 				file.close();
 
 				LOG("Creating file: " << line);
-				std::string tasklist_name = line.substr(line.find_first_of(' ') + 1);
-				file = std::ofstream(std::string(TASKLIST_KWORD) + "/" + tasklist_name);
+				std::string tasklist_name = line.substr(DIR_PATH.size() + 1);
+				std::string tasklist_path = DIR_PATH + "/" + tasklist_name;
 
-				files.push_back(std::string(TASKLIST_KWORD) + "/" + tasklist_name);
+				file = std::ofstream(tasklist_path);
+				files.push_back(tasklist_path);
 			} else {
 				file << line << '\n' << std::endl;
 			}
