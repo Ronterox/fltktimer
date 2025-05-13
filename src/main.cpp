@@ -45,11 +45,34 @@ int main(int argc, char *argv[]) {
 		}
 
 		LOG("Running all tasklists: " << command.str());
-		if (system(command.str().c_str()) != 0) {
-			std::cerr << "Failed to start processes" << std::endl;
+		// if (system(command.str().c_str()) != 0) {
+		// 	std::cerr << "Failed to start processes" << std::endl;
+		// }
+
+		int ret = run_app(BASIC_FILE, argc, argv);
+
+		// TODO: Do this when sub files are modified callback
+		if (ret == 0) {
+			std::ostringstream tasks;
+			files.insert(files.begin(), BASIC_FILE);
+
+			for (const auto &filename : files) {
+				tasks << "\n" TASKLIST_KWORD " " << filename.substr(DIR_PATH.size() + 1) << '\n' << std::endl;
+				foreach_line(filename, line, {
+					// if (is_task_completed(line.c_str())) continue;
+					tasks << line << '\n' << std::endl;
+				});
+			}
+
+			std::ofstream file(filename);
+			file << tasks.str();
+			file.close();
+
+		} else {
+			std::cerr << "Failed to run/close" << std::endl;
 		}
 
-		return run_app(BASIC_FILE, argc, argv);
+		return ret;
 	}
 
 	return run_app(filename, argc, argv);

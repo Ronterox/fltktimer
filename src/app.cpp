@@ -43,8 +43,7 @@ struct FileData {
 	std::function<void()> onfilechange;
 };
 
-bool is_task_completed(Fl_Box *b) {
-	const char *start = b->label();
+bool is_task_completed(const char *start) {
 	const char *end = start + strlen(start);
 	return std::find_if_not(start, end, [](char c) { return c == '-'; }) == end;
 }
@@ -87,7 +86,7 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task, const std:
 	int y = 50;
 	if (tasks->size() > 0) {
 		Fl_Box *b = tasks->back().box;
-		y = is_task_completed(b) ? b->y() + 10 : b->y() + 40;
+		y = is_task_completed(b->label()) ? b->y() + 10 : b->y() + 40;
 	}
 
 	const auto now = std::chrono::system_clock::now();
@@ -116,8 +115,8 @@ void add_task(list<Task> *tasks, Fl_Window *window, std::string task, const std:
 					b->copy_label(std::string(s.size(), '-').c_str());
 					found = true;
 
-					const int completed =
-						std::count_if(tasks->begin(), tasks->end(), [](const Task &t) { return is_task_completed(t.box); });
+					const int completed = std::count_if(tasks->begin(), tasks->end(),
+														[](const Task &t) { return is_task_completed(t.box->label()); });
 
 					const time_point now = std::chrono::system_clock::now();
 					const int seconds = std::chrono::duration_cast<std::chrono::seconds>(now - it->start).count();
@@ -179,7 +178,7 @@ int run_app(std::string filename, const int argc, char **argv) {
 	foreach_line(filename, line, { add_task(&tasks, window, line, filename); });
 
 	for (const auto &task : tasks) {
-		if (is_task_completed(task.box)) task.del->hide();
+		if (is_task_completed(task.box->label())) task.del->hide();
 	}
 
 	LOG("Setting up events...");
