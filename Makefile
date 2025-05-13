@@ -32,5 +32,5 @@ $(TARGET): $(OBJS)
 gdb: $(TARGET)
 	gdb ./$(TARGET)
 
-clean: $(TARGET) $(OBJS)
+clean:
 	rm -f $(OBJS) $(TARGET) 2> /dev/null
