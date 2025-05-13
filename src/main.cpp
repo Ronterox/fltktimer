@@ -60,23 +60,22 @@ int main(int argc, char *argv[]) {
 			// Parent continues
 		}
 
-		while (wait(nullptr) != -1);
+		while (wait(nullptr) != -1) {
+			LOG("Saving to main file: " << filename);
 
-		LOG("Saving to main file: " << filename);
+			std::ostringstream tasks;
+			for (const auto &filename : files) {
+				tasks << "\n" TASKLIST_KWORD " " << filename.substr(DIR_PATH.size() + 1) << '\n' << std::endl;
+				foreach_line(filename, line, {
+					// if (is_task_completed(line.c_str())) continue;
+					tasks << line << '\n' << std::endl;
+				});
+			}
 
-		// TODO: Do this when sub files are modified callback or on wait
-		std::ostringstream tasks;
-		for (const auto &filename : files) {
-			tasks << "\n" TASKLIST_KWORD " " << filename.substr(DIR_PATH.size() + 1) << '\n' << std::endl;
-			foreach_line(filename, line, {
-				// if (is_task_completed(line.c_str())) continue;
-				tasks << line << '\n' << std::endl;
-			});
+			file = std::ofstream(filename);
+			file << tasks.str();
+			file.close();
 		}
-
-		file = std::ofstream(filename);
-		file << tasks.str();
-		file.close();
 
 		return 0;
 	}
