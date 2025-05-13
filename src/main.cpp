@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 
 		const std::string BASIC_FILE = std::string(TASKLIST_KWORD) + "/tasks";
 
-		list<std::string> files = {BASIC_FILE};
+		list<std::string> files = {};
 		std::ofstream file(BASIC_FILE);
 
 		foreach_line(filename, line, {
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 			std::cerr << "Failed to start processes" << std::endl;
 		}
 
-		return 0;
+		return run_app(BASIC_FILE, argc, argv);
 	}
 
 	return run_app(filename, argc, argv);
