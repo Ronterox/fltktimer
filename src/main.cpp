@@ -22,7 +22,11 @@ int main(int argc, char *argv[]) {
 		std::ofstream file;
 
 		foreach_line(filename, line, {
-			if (starts_with(line, TASKLIST_KWORD)) {
+			std::string lower_line;
+			lower_line.resize(line.size());
+			std::transform(line.begin(), line.end(), lower_line.begin(), ::tolower);
+
+			if (starts_with(lower_line, TASKLIST_KWORD)) {
 				file.close();
 
 				LOG("Creating file: " << line);
@@ -60,6 +64,7 @@ int main(int argc, char *argv[]) {
 			// Parent continues
 		}
 
+		// TODO: Show main title of filename on the window
 		while (wait(nullptr) != -1) {
 			LOG("Saving to main file: " << filename);
 
